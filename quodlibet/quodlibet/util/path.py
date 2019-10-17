@@ -173,97 +173,39 @@ def find_mount_point(path):
 def xdg_get_system_data_dirs():
     """http://standards.freedesktop.org/basedir-spec/latest/"""
 
-    if os.name == "nt":
-        from gi.repository import GLib
-        dirs = []
-        for dir_ in GLib.get_system_data_dirs():
-            dirs.append(glib2fsn(dir_))
-        return dirs
-
-    data_dirs = os.getenv("XDG_DATA_DIRS")
-    if data_dirs:
-        return list(map(os.path.abspath, data_dirs.split(":")))
-    else:
-        return ("/usr/local/share/", "/usr/share/")
-
+    from gi.repository import GLib
+    return map(glib2fsn, GLib.get_system_data_dirs())
 
 def xdg_get_cache_home():
-    if os.name == "nt":
-        from gi.repository import GLib
-        return glib2fsn(GLib.get_user_cache_dir())
-
-    data_home = os.getenv("XDG_CACHE_HOME")
-    if data_home:
-        return os.path.abspath(data_home)
-    else:
-        return os.path.join(os.path.expanduser("~"), ".cache")
+    from gi.repository import GLib
+    return glib2fsn(GLib.get_user_cache_dir())
 
 
 def xdg_get_data_home():
-    if os.name == "nt":
-        from gi.repository import GLib
-        return glib2fsn(GLib.get_user_data_dir())
-
-    data_home = os.getenv("XDG_DATA_HOME")
-    if data_home:
-        return os.path.abspath(data_home)
-    else:
-        return os.path.join(os.path.expanduser("~"), ".local", "share")
+    from gi.repository import GLib
+    return glib2fsn(GLib.get_user_data_dir())
 
 
 def xdg_get_config_home():
-    if os.name == "nt":
-        from gi.repository import GLib
-        return glib2fsn(GLib.get_user_config_dir())
+    from gi.repository import GLib
+    return glib2fsn(GLib.get_user_config_dir())
 
-    data_home = os.getenv("XDG_CONFIG_HOME")
-    if data_home:
-        return os.path.abspath(data_home)
+
+def xdg_get_runtime_dir():
+    from gi.repository import GLib
+    return glib2fsn(GLib.get_user_runtime_dir())
+
+
+def xdg_get_special_dir(directory):
+    """Returns the specified user directory."""
+
+    from gi.repository import GLib
+
+    key = 'USER_DIRECTORY_' + directory
+    if key in GLib:
+        return glib2fsn(GLib.get_user_special_dir(GLib[key]))
     else:
-        return os.path.join(os.path.expanduser("~"), ".config")
-
-
-def parse_xdg_user_dirs(data):
-    """Parses xdg-user-dirs and returns a dict of keys and paths.
-
-    The paths depend on the content of environ while calling this function.
-    See http://www.freedesktop.org/wiki/Software/xdg-user-dirs/
-
-    Args:
-        data (bytes)
-
-    Can't fail (but might return garbage).
-    """
-
-    assert isinstance(data, bytes)
-
-    paths = {}
-    for line in data.splitlines():
-        if line.startswith(b"#"):
-            continue
-        parts = line.split(b"=", 1)
-        if len(parts) <= 1:
-            continue
-        key = parts[0]
-        try:
-            values = shlex.split(bytes2fsn(parts[1], "utf-8"))
-        except ValueError:
-            continue
-        if len(values) != 1:
-            continue
-        paths[key] = os.path.normpath(expandvars(values[0]))
-
-    return paths
-
-
-def xdg_get_user_dirs():
-    """Returns a dict of xdg keys to paths. The paths don't have to exist."""
-    config_home = xdg_get_config_home()
-    try:
-        with open(os.path.join(config_home, "user-dirs.dirs"), "rb") as h:
-            return parse_xdg_user_dirs(h.read())
-    except EnvironmentError:
-        return {}
+        except ValueError("%s is not an XDG special directory" % directory)
 
 
 def get_temp_cover_file(data):
